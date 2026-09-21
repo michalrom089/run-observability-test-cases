@@ -12,6 +12,9 @@ is ever a no-op.
 | `single-error/`    | succeeds | fails with one error         |
 | `multiple-errors/` | succeeds | fails with two errors        |
 
+`spacelift/` is not a test case. It creates one Spacelift stack per case. See
+[Setting up the stacks](#setting-up-the-stacks).
+
 ## Cases
 
 ### `simple/`
@@ -54,3 +57,41 @@ cd single-error
 terraform init
 terraform apply
 ```
+
+## Setting up the stacks
+
+`spacelift/` creates one OpenTofu stack per test case with the Spacelift
+Terraform provider. The stack name is `run-obs-<project root>`.
+
+```bash
+cd spacelift
+export SPACELIFT_API_KEY_ENDPOINT=https://<account>.app.spacelift.io
+export SPACELIFT_API_KEY_ID=<id>
+export SPACELIFT_API_KEY_SECRET=<secret>
+
+terraform init
+terraform apply
+```
+
+The stacks autodeploy, so every tracked run applies on its own and the error
+cases reproduce without you confirming anything. Set `-var autodeploy=false` to
+stop runs at Unconfirmed.
+
+To add a case, add a directory and one entry to `locals.projects` in
+`spacelift/main.tf`.
+
+### Variables
+
+| Name           | Default                         | Purpose                                |
+| -------------- | ------------------------------- | -------------------------------------- |
+| `repository`   | `run-observability-test-cases`  | Repository the stacks track            |
+| `branch`       | `main`                          | Branch the stacks track                |
+| `space_id`     | `root`                          | Space that holds the stacks            |
+| `tofu_version` | `1.10.6`                        | OpenTofu version the stacks run        |
+| `autodeploy`   | `true`                          | Apply tracked runs without confirming  |
+| `name_prefix`  | `run-obs`                       | Prefix for the stack names             |
+
+### Running it as an administrative stack
+
+Point a stack at the `spacelift/` project root and set `administrative = true`.
+Spacelift then manages the test stacks from a run instead of from your machine.
