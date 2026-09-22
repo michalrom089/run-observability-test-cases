@@ -19,7 +19,7 @@ costs money and nothing here has a real backend.
 | `simple/`          | Test case. Plan and apply both succeed.              |
 | `single-error/`    | Test case. Apply fails with one error.               |
 | `multiple-errors/` | Test case. Apply fails with two errors in parallel.  |
-| `spacelift/`       | Not a test case. Creates one stack per test case.    |
+| `spacelift/`       | Not a test case. Creates the space and the stacks.   |
 
 ## Rules that every test case follows
 
@@ -45,7 +45,7 @@ Break one of these and the case stops testing what it claims to test.
 1. Create a directory named after the outcome it produces.
 2. Copy `simple/main.tf` as the starting point and keep the trigger.
 3. Add one entry to `locals.projects` in `spacelift/main.tf`. The key is the
-   directory name.
+   directory name. The stack joins the space on its own.
 4. Add a row to the table in `README.md`.
 5. Verify the case. See below.
 
@@ -76,10 +76,27 @@ They are gitignored, but a stray state file makes the next run a no-op.
 It creates the stacks with the `spacelift-io/spacelift` provider. One
 `spacelift_stack` resource with `for_each` over `locals.projects`.
 
+The stacks sit in their own space. `spacelift_space.test_cases` creates it under
+the space that `var.parent_space_id` names. The space takes its name from
+`var.name_prefix`. It inherits the entities of its parent, so the stacks still
+see the contexts and the policies attached above.
+
+The stacks read the repository through the raw Git vendor. `raw_git` takes the
+public HTTPS URL from `var.git_url`. The account needs no VCS integration, so
+the config works in any account. Keep the block.
+
+A bootstrap stack applies this directory. `README.md` holds the `spacectl api`
+commands that create it. The bootstrap stack needs the `space-admin` role
+attached in `root`. `administrative = true` is deprecated. Use
+`spacelift_role_attachment` or the `stackRoleBindingCreate` mutation.
+
 **Do not apply it without asking.** An apply creates real stacks in a real
 Spacelift account. `terraform init` and `terraform validate` are safe.
 
-Keep `terraform_workflow_tool = "OPEN_TOFU"`. The cases run on OpenTofu.
+Keep the `opentofu` block on the stack resource. The cases run on OpenTofu.
+The block makes a native OpenTofu stack. It replaces
+`terraform_workflow_tool = "OPEN_TOFU"` and conflicts with every `terraform_*`
+attribute. The account needs the `opentofu-backend` feature flag.
 
 ## Writing style
 

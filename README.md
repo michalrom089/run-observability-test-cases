@@ -61,7 +61,8 @@ terraform apply
 ## Setting up the stacks
 
 `spacelift/` creates one OpenTofu stack per test case with the Spacelift
-Terraform provider. The stack name is `run-obs-<project root>`.
+Terraform provider. The stack name is `run-obs-<project root>`. The stacks live
+in their own space, `run-obs`, under the root space.
 
 ```bash
 cd spacelift
@@ -80,18 +81,105 @@ stop runs at Unconfirmed.
 To add a case, add a directory and one entry to `locals.projects` in
 `spacelift/main.tf`.
 
+### Quick setup with spacectl
+
+This creates one bootstrap stack. The bootstrap stack creates the space and the
+three test stacks. You run nothing on your machine after step 3.
+
+The commands need spacectl v1.20.0 or later. The `api` command arrived in that
+release. Run `spacectl version` to check.
+
+**1. Create the bootstrap stack.** It reads this repository over the raw Git
+vendor, so your account needs no VCS integration.
+
+```bash
+spacectl api --variables '{
+  "input": {
+    "name": "run-obs-bootstrap",
+    "description": "Creates the run observability test case space and stacks.",
+    "provider": "GIT",
+    "repository": "run-observability-test-cases",
+    "repositoryURL": "https://github.com/michalrom089/run-observability-test-cases.git",
+    "namespace": "michalrom089",
+    "branch": "main",
+    "projectRoot": "spacelift",
+    "space": "root",
+    "autodeploy": true,
+    "administrative": false,
+    "labels": ["run-observability", "bootstrap"],
+    "vendorConfig": {
+      "opentofu": { "version": "1.10.6", "workflowTool": "OPENTOFU" }
+    }
+  },
+  "manageState": true
+}' 'mutation CreateBootstrap($input: StackInput!, $manageState: Boolean!) {
+  stackCreate(input: $input, manageState: $manageState) { id name }
+}'
+```
+
+**2. Give the stack permission to create the space and the stacks.** Attach the
+`space-admin` system role in `root`. `administrative = true` is deprecated.
+
+```bash
+ROLE_ID=$(spacectl api '{ roles { id slug } }' --raw \
+  | jq -r '.data.roles[] | select(.slug == "space-admin") | .id')
+
+spacectl api --variables "{
+  \"input\": {
+    \"stackID\": \"run-obs-bootstrap\",
+    \"roleID\": \"$ROLE_ID\",
+    \"spaceID\": \"root\"
+  }
+}" 'mutation AttachRole($input: StackRoleBindingInput!) {
+  stackRoleBindingCreate(input: $input) { id }
+}'
+```
+
+`stackID` takes the stack slug. You need admin access to `root` to read the role
+and to attach it.
+
+**3. Run it.**
+
+```bash
+spacectl stack deploy --id run-obs-bootstrap
+```
+
+The run creates the space and the three test stacks. Each test stack then runs
+on its own and produces its documented outcome.
+
 ### Variables
 
-| Name           | Default                         | Purpose                                |
-| -------------- | ------------------------------- | -------------------------------------- |
-| `repository`   | `run-observability-test-cases`  | Repository the stacks track            |
-| `branch`       | `main`                          | Branch the stacks track                |
-| `space_id`     | `root`                          | Space that holds the stacks            |
-| `tofu_version` | `1.10.6`                        | OpenTofu version the stacks run        |
-| `autodeploy`   | `true`                          | Apply tracked runs without confirming  |
-| `name_prefix`  | `run-obs`                       | Prefix for the stack names             |
+| Name              | Default                        | Purpose                               |
+| ----------------- | ------------------------------ | ------------------------------------- |
+| `repository`      | `run-observability-test-cases` | Repository the stacks track           |
+| `git_url`         | the HTTPS URL of this repo     | Repository URL for the raw Git vendor |
+| `git_namespace`   | `michalrom089`                 | Namespace shown next to the repo      |
+| `branch`          | `main`                         | Branch the stacks track               |
+| `parent_space_id` | `root`                         | Space that holds the test case space  |
+| `tofu_version`    | `1.10.6`                       | OpenTofu version the stacks run       |
+| `autodeploy`      | `true`                         | Apply tracked runs without confirming |
+| `name_prefix`     | `run-obs`                      | Prefix for the stack names            |
 
-### Running it as an administrative stack
+### Running it from a stack
 
-Point a stack at the `spacelift/` project root and set `administrative = true`.
-Spacelift then manages the test stacks from a run instead of from your machine.
+Point a stack at the `spacelift/` project root. Spacelift then manages the space
+and the test stacks from a run instead of from your machine.
+
+That stack needs permission to create them. `administrative = true` is
+deprecated. Attach the `space-admin` system role to the stack instead:
+
+```hcl
+data "spacelift_role" "space_admin" {
+  slug = "space-admin"
+}
+
+resource "spacelift_role_attachment" "bootstrap" {
+  stack_id = "run-obs-bootstrap"
+  role_id  = data.spacelift_role.space_admin.id
+  space_id = "root"
+}
+```
+
+`stack_id` takes the stack slug, not the ULID. `space_id` is `root`, because the
+stack creates a space under root. You need admin access to `root` to read the
+role and to attach it.

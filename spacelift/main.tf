@@ -13,6 +13,16 @@ locals {
   }
 }
 
+# One space that holds every test case stack.
+resource "spacelift_space" "test_cases" {
+  name             = var.name_prefix
+  parent_space_id  = var.parent_space_id
+  description      = "Stacks that produce known run outcomes."
+  inherit_entities = true
+
+  labels = ["run-observability"]
+}
+
 resource "spacelift_stack" "test_case" {
   for_each = local.projects
 
@@ -23,11 +33,18 @@ resource "spacelift_stack" "test_case" {
   branch       = var.branch
   project_root = each.key
 
-  # terraform_workflow_tool options: "TERRAFORM_FOSS", "OPEN_TOFU", "CUSTOM"
-  terraform_workflow_tool = "OPEN_TOFU"
-  terraform_version       = var.tofu_version
+  # The raw Git vendor reads a public repository over HTTPS. No VCS integration.
+  raw_git {
+    namespace = var.git_namespace
+    url       = var.git_url
+  }
 
-  space_id   = var.space_id
+  # A native OpenTofu stack. The block replaces terraform_workflow_tool = "OPEN_TOFU".
+  opentofu {
+    version = var.tofu_version
+  }
+
+  space_id   = spacelift_space.test_cases.id
   autodeploy = var.autodeploy
 
   labels = ["run-observability", "test-case", each.key]
