@@ -46,6 +46,12 @@ variable "trigger_runs" {
   default     = true
 }
 
+variable "slow_seconds" {
+  type        = number
+  description = "Seconds a slow run sleeps. The runs after slow_after get it as TF_VAR_sleep_seconds."
+  default     = 300
+}
+
 variable "name_prefix" {
   type        = string
   description = "Prefix for the stack names. A second copy of the set in the same account also needs a different parent_space_id, because the space name is fixed."

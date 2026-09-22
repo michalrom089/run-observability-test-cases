@@ -11,17 +11,20 @@ is ever a no-op.
 | `simple/`          | succeeds | succeeds                     |
 | `single-error/`    | succeeds | fails with one error         |
 | `multiple-errors/` | succeeds | fails with two errors        |
+| `slow-runs/`       | succeeds | succeeds, after a sleep      |
 
-`spacelift/` is not a test case. It creates five stacks from those three project
-roots. Two of them hold no runs at all, which is its own thing to report on.
+`spacelift/` is not a test case. It creates six stacks from those four project
+roots. Two hold no runs at all and one changes pace part way through. Both are
+their own thing to report on.
 
-| Stack                          | Project root       | Runs |
-| ------------------------------ | ------------------ | ---- |
-| `run-obs-simple`               | `simple/`          | 3    |
-| `run-obs-single-error`         | `single-error/`    | 3    |
-| `run-obs-multiple-errors`      | `multiple-errors/` | 3    |
-| `run-obs-simple-no-runs`       | `simple/`          | 0    |
-| `run-obs-single-error-no-runs` | `single-error/`    | 0    |
+| Stack                          | Project root       | Runs           |
+| ------------------------------ | ------------------ | -------------- |
+| `run-obs-simple`               | `simple/`          | 3              |
+| `run-obs-single-error`         | `single-error/`    | 3              |
+| `run-obs-multiple-errors`      | `multiple-errors/` | 3              |
+| `run-obs-simple-no-runs`       | `simple/`          | 0              |
+| `run-obs-single-error-no-runs` | `single-error/`    | 0              |
+| `run-obs-slow-runs`            | `slow-runs/`       | 3 fast, 3 slow |
 
 ## Getting started
 
@@ -87,7 +90,7 @@ and to attach it.
 spacectl stack deploy --id run-obs-bootstrap
 ```
 
-The run creates the space and the five test stacks. It also starts the runs that
+The run creates the space and the six test stacks. It also starts the runs that
 the table above lists, so the cases produce their outcomes without you doing
 anything. The two `-no-runs` stacks stay empty on purpose.
 
@@ -128,6 +131,17 @@ one error instead of two.
 
 Set `-parallelism=1` and only `fail_a` fails. Use that if you want to compare
 sequential and parallel failure reporting.
+
+### `slow-runs/`
+
+The apply always succeeds. `var.sleep_seconds` decides how long it takes, and
+the default is 0. The stack's first three runs leave it alone and finish fast.
+The runs after that carry `TF_VAR_sleep_seconds` in their run environment, so
+they sleep and a duration alert has something to catch.
+
+`spacelift/main.tf` sets that environment, not this directory. `slow_after = 3`
+on the stack says how many runs stay fast, and `var.slow_seconds` says how long
+the rest sleep.
 
 ## Requirements
 
@@ -188,6 +202,7 @@ directory and `runs` says how many runs the stack starts with.
 | `parent_space_id` | `root`                         | Space that holds the test case space  |
 | `tofu_version`    | `1.10.6`                       | OpenTofu version the stacks run       |
 | `autodeploy`      | `true`                         | Apply tracked runs without confirming |
+| `slow_seconds`    | `300`                          | Seconds a slow run sleeps             |
 | `trigger_runs`    | `true`                         | Start one run per case at create      |
 | `name_prefix`     | `run-obs`                      | Prefix for the stack names            |
 

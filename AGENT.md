@@ -19,6 +19,7 @@ costs money and nothing here has a real backend.
 | `simple/`          | Test case. Plan and apply both succeed.              |
 | `single-error/`    | Test case. Apply fails with one error.               |
 | `multiple-errors/` | Test case. Apply fails with two errors in parallel.  |
+| `slow-runs/`       | Test case. Apply succeeds. Later runs are slow.      |
 | `spacelift/`       | Not a test case. Creates the space and the stacks.   |
 
 ## Rules that every test case follows
@@ -35,10 +36,16 @@ Break one of these and the case stops testing what it claims to test.
    sleeps 5 seconds before it exits. Without the sleep the first failure can
    land before Terraform starts the second resource, and the apply reports one
    error instead of two.
-4. **Failing resources do not depend on each other.** `fail_a` and `fail_b` both
+4. **A repeating provisioner needs `triggers_replace`.** A `local-exec`
+   provisioner only runs when the resource is created. `input = ...` updates the
+   resource in place, so the provisioner never runs again. `single-error/` and
+   `multiple-errors/` get away with `input` because a failed provisioner taints
+   the resource and the next apply replaces it. `slow-runs/` succeeds, so it
+   must use `triggers_replace`.
+5. **Failing resources do not depend on each other.** `fail_a` and `fail_b` both
    depend on the trigger and on nothing else. That is what lets Terraform run
    them at the same time.
-5. **The README table is the contract.** Change a case, change the table.
+6. **The README table is the contract.** Change a case, change the table.
 
 ## Adding a test case
 
@@ -51,7 +58,9 @@ Break one of these and the case stops testing what it claims to test.
 5. Verify the case. See below.
 
 `spacelift_run` starts the runs on the new stack. You do not trigger them. Set
-`runs = 0` for a stack that must stay empty.
+`runs = 0` for a stack that must stay empty. Set `slow_after = N` to keep the
+first N runs fast and give the rest `TF_VAR_sleep_seconds`, which only
+`slow-runs/` reads.
 
 ## Verifying a change
 
@@ -71,6 +80,8 @@ Expected output:
 - `simple` prints `Apply complete!`
 - `single-error` prints one `Error: local-exec provisioner error`
 - `multiple-errors` prints two, for `fail_a` and `fail_b`
+- `slow-runs` prints `sleeping 0 seconds` and `Apply complete!`. Run it twice.
+  The second apply must print the sleep again, not `0 changed`.
 
 Delete `.terraform/`, `.terraform.lock.hcl` and the state files afterwards.
 They are gitignored, but a stray state file makes the next run a no-op.

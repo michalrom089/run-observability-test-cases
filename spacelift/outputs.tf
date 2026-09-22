@@ -4,8 +4,14 @@ output "stack_ids" {
 }
 
 output "run_counts" {
-  value       = { for key, stack in local.stacks : key => stack.runs }
-  description = "Number of runs each stack starts at create."
+  value = {
+    for key, stack in local.stacks : key => {
+      total = stack.runs
+      fast  = coalesce(stack.slow_after, stack.runs)
+      slow  = stack.runs - coalesce(stack.slow_after, stack.runs)
+    }
+  }
+  description = "Runs each stack starts at create, split into fast and slow."
 }
 
 output "space_id" {
