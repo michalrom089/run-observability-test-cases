@@ -40,8 +40,14 @@ variable "autodeploy" {
   default     = true
 }
 
+variable "trigger_runs" {
+  type        = bool
+  description = "Start one run per test case after the stack is created. The run fires once, at create."
+  default     = true
+}
+
 variable "name_prefix" {
   type        = string
-  description = "Prefix for the stack names. Change it to run a second copy of the set in the same account."
+  description = "Prefix for the stack names. A second copy of the set in the same account also needs a different parent_space_id, because the space name is fixed."
   default     = "run-obs"
 }

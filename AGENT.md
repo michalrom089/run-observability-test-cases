@@ -49,6 +49,8 @@ Break one of these and the case stops testing what it claims to test.
 4. Add a row to the table in `README.md`.
 5. Verify the case. See below.
 
+`spacelift_run` starts the first run on the new stack. You do not trigger it.
+
 ## Verifying a change
 
 Run these before you commit. Apply every case you touched and read the output.
@@ -78,7 +80,8 @@ It creates the stacks with the `spacelift-io/spacelift` provider. One
 
 The stacks sit in their own space. `spacelift_space.test_cases` creates it under
 the space that `var.parent_space_id` names. The space takes its name from
-`var.name_prefix`. It inherits the entities of its parent, so the stacks still
+`var.repository`, so it matches this repository. Every stack name starts with
+`var.name_prefix`, which is `run-obs`. It inherits the entities of its parent, so the stacks still
 see the contexts and the policies attached above.
 
 The stacks read the repository through the raw Git vendor. `raw_git` takes the

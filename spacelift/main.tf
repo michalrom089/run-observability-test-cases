@@ -15,7 +15,7 @@ locals {
 
 # One space that holds every test case stack.
 resource "spacelift_space" "test_cases" {
-  name             = var.name_prefix
+  name             = var.repository
   parent_space_id  = var.parent_space_id
   description      = "Stacks that produce known run outcomes."
   inherit_entities = true
@@ -48,4 +48,12 @@ resource "spacelift_stack" "test_case" {
   autodeploy = var.autodeploy
 
   labels = ["run-observability", "test-case", each.key]
+}
+
+# One run per test case, so a new stack produces its outcome without you
+# triggering it. The run fires once, at create.
+resource "spacelift_run" "test_case" {
+  for_each = var.trigger_runs ? toset(keys(local.projects)) : toset([])
+
+  stack_id = spacelift_stack.test_case[each.key].id
 }
