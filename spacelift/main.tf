@@ -1,16 +1,40 @@
-# One stack per test case. The key is the project root in this repository.
+# One stack per entry. The key is the stack name suffix, not the project root.
+# Two stacks can share a project root and differ only in how many runs they hold.
 locals {
-  projects = {
+  stacks = {
     "simple" = {
-      description = "The plan and the apply both succeed. Every run has a change to apply."
+      project_root = "simple"
+      description  = "The plan and the apply both succeed. Every run has a change to apply."
+      runs         = 3
     }
     "single-error" = {
-      description = "The plan succeeds. The apply fails with one error."
+      project_root = "single-error"
+      description  = "The plan succeeds. The apply fails with one error."
+      runs         = 3
     }
     "multiple-errors" = {
-      description = "The plan succeeds. The apply fails with two errors in parallel."
+      project_root = "multiple-errors"
+      description  = "The plan succeeds. The apply fails with two errors in parallel."
+      runs         = 3
+    }
+    "simple-no-runs" = {
+      project_root = "simple"
+      description  = "The plan and the apply both succeed. The stack holds no runs."
+      runs         = 0
+    }
+    "single-error-no-runs" = {
+      project_root = "single-error"
+      description  = "The plan succeeds. The apply fails with one error. The stack holds no runs."
+      runs         = 0
     }
   }
+
+  # One entry per run. The key is unique, the value names the stack to run.
+  runs = merge([
+    for key, stack in local.stacks : {
+      for index in range(stack.runs) : "${key}-${index}" => key
+    }
+  ]...)
 }
 
 # One space that holds every test case stack.
@@ -24,14 +48,14 @@ resource "spacelift_space" "test_cases" {
 }
 
 resource "spacelift_stack" "test_case" {
-  for_each = local.projects
+  for_each = local.stacks
 
   name        = "${var.name_prefix}-${each.key}"
   description = each.value.description
 
   repository   = var.repository
   branch       = var.branch
-  project_root = each.key
+  project_root = each.value.project_root
 
   # The raw Git vendor reads a public repository over HTTPS. No VCS integration.
   raw_git {
@@ -47,13 +71,13 @@ resource "spacelift_stack" "test_case" {
   space_id   = spacelift_space.test_cases.id
   autodeploy = var.autodeploy
 
-  labels = ["run-observability", "test-case", each.key]
+  labels = ["run-observability", "test-case", each.value.project_root]
 }
 
-# One run per test case, so a new stack produces its outcome without you
-# triggering it. The run fires once, at create.
+# The runs each stack holds. A stack with runs = 0 gets none, which is what the
+# `-no-runs` cases test. The runs fire once, at create.
 resource "spacelift_run" "test_case" {
-  for_each = var.trigger_runs ? toset(keys(local.projects)) : toset([])
+  for_each = var.trigger_runs ? local.runs : {}
 
-  stack_id = spacelift_stack.test_case[each.key].id
+  stack_id = spacelift_stack.test_case[each.value].id
 }

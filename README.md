@@ -12,7 +12,16 @@ is ever a no-op.
 | `single-error/`    | succeeds | fails with one error         |
 | `multiple-errors/` | succeeds | fails with two errors        |
 
-`spacelift/` is not a test case. It creates one Spacelift stack per case.
+`spacelift/` is not a test case. It creates five stacks from those three project
+roots. Two of them hold no runs at all, which is its own thing to report on.
+
+| Stack                          | Project root       | Runs |
+| ------------------------------ | ------------------ | ---- |
+| `run-obs-simple`               | `simple/`          | 3    |
+| `run-obs-single-error`         | `single-error/`    | 3    |
+| `run-obs-multiple-errors`      | `multiple-errors/` | 3    |
+| `run-obs-simple-no-runs`       | `simple/`          | 0    |
+| `run-obs-single-error-no-runs` | `single-error/`    | 0    |
 
 ## Getting started
 
@@ -78,8 +87,9 @@ and to attach it.
 spacectl stack deploy --id run-obs-bootstrap
 ```
 
-The run creates the space and the three test stacks. It also starts one run on
-each of them, so every case produces its outcome without you doing anything.
+The run creates the space and the five test stacks. It also starts the runs that
+the table above lists, so the cases produce their outcomes without you doing
+anything. The two `-no-runs` stacks stay empty on purpose.
 
 To run them again later:
 
@@ -163,8 +173,9 @@ The stacks autodeploy, so every tracked run applies on its own and the error
 cases reproduce without you confirming anything. Set `-var autodeploy=false` to
 stop runs at Unconfirmed.
 
-To add a case, add a directory and one entry to `locals.projects` in
-`spacelift/main.tf`.
+To add a case, add a directory and one entry to `locals.stacks` in
+`spacelift/main.tf`. The key is the stack name suffix. `project_root` names the
+directory and `runs` says how many runs the stack starts with.
 
 ### Variables
 

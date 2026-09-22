@@ -44,12 +44,14 @@ Break one of these and the case stops testing what it claims to test.
 
 1. Create a directory named after the outcome it produces.
 2. Copy `simple/main.tf` as the starting point and keep the trigger.
-3. Add one entry to `locals.projects` in `spacelift/main.tf`. The key is the
-   directory name. The stack joins the space on its own.
+3. Add one entry to `locals.stacks` in `spacelift/main.tf`. The key is the stack
+   name suffix. Set `project_root` to the directory and `runs` to the number of
+   runs the stack starts with. The stack joins the space on its own.
 4. Add a row to the table in `README.md`.
 5. Verify the case. See below.
 
-`spacelift_run` starts the first run on the new stack. You do not trigger it.
+`spacelift_run` starts the runs on the new stack. You do not trigger them. Set
+`runs = 0` for a stack that must stay empty.
 
 ## Verifying a change
 
@@ -76,7 +78,12 @@ They are gitignored, but a stray state file makes the next run a no-op.
 ## The `spacelift/` directory
 
 It creates the stacks with the `spacelift-io/spacelift` provider. One
-`spacelift_stack` resource with `for_each` over `locals.projects`.
+`spacelift_stack` resource with `for_each` over `locals.stacks`.
+
+`locals.stacks` is keyed by the stack name suffix, not by the project root. Two
+stacks can share a project root. `run-obs-simple` and `run-obs-simple-no-runs`
+both run `simple/` and differ only in their run count. `locals.runs` flattens
+the map into one entry per run, which `spacelift_run` then creates.
 
 The stacks sit in their own space. `spacelift_space.test_cases` creates it under
 the space that `var.parent_space_id` names. The space takes its name from
