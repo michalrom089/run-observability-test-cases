@@ -3,8 +3,9 @@
 Terraform configurations that produce known run outcomes. Point a stack at one
 project root and you get the same result on every run.
 
-Every case uses `timestamp()` as a trigger, so every run plans a change. No run
-is ever a no-op.
+Most cases use `timestamp()` as a trigger, so every run plans a change.
+`no-changes/` is the exception. It has no trigger, so every run after the first
+is a no-op.
 
 | Project root       | Plan     | Apply                        |
 | ------------------ | -------- | ---------------------------- |
@@ -12,10 +13,11 @@ is ever a no-op.
 | `single-error/`    | succeeds | fails with one error         |
 | `multiple-errors/` | succeeds | fails with two errors        |
 | `slow-runs/`       | succeeds | succeeds, after a sleep      |
+| `no-changes/`      | succeeds | succeeds, changing nothing   |
 
-`spacelift/` is not a test case. It creates six stacks from those four project
-roots. Two hold no runs at all and one changes pace part way through. Both are
-their own thing to report on.
+`spacelift/` is not a test case. It creates seven stacks from those five project
+roots. Two hold no runs at all, one changes pace part way through and one goes
+quiet after its first run. Each is its own thing to report on.
 
 | Stack                          | Project root       | Runs           |
 | ------------------------------ | ------------------ | -------------- |
@@ -24,6 +26,7 @@ their own thing to report on.
 | `run-obs-multiple-errors`      | `multiple-errors/` | 3              |
 | `run-obs-simple-no-runs`       | `simple/`          | 0              |
 | `run-obs-single-error-no-runs` | `single-error/`    | 0              |
+| `run-obs-no-changes`           | `no-changes/`      | 3              |
 | `run-obs-slow-runs`            | `slow-runs/`       | 3 fast, 3 slow |
 
 ## Getting started
@@ -90,7 +93,7 @@ and to attach it.
 spacectl stack deploy --id run-obs-bootstrap
 ```
 
-The run creates the space and the six test stacks. It also starts the runs that
+The run creates the space and the seven test stacks. It also starts the runs that
 the table above lists, so the cases produce their outcomes without you doing
 anything. The two `-no-runs` stacks stay empty on purpose.
 
@@ -131,6 +134,14 @@ one error instead of two.
 
 Set `-parallelism=1` and only `fail_a` fails. Use that if you want to compare
 sequential and parallel failure reporting.
+
+### `no-changes/`
+
+The one case with no `timestamp()` trigger. The first apply creates a
+`terraform_data` and a `random_id`. Every apply after it prints `No changes.
+Your infrastructure matches the configuration.` and touches nothing.
+
+The stack starts three runs. Run one applies. Runs two and three are no-ops.
 
 ### `slow-runs/`
 

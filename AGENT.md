@@ -14,21 +14,24 @@ costs money and nothing here has a real backend.
 
 ## Layout
 
-| Path               | Purpose                                             |
-| ------------------ | --------------------------------------------------- |
-| `simple/`          | Test case. Plan and apply both succeed.              |
-| `single-error/`    | Test case. Apply fails with one error.               |
-| `multiple-errors/` | Test case. Apply fails with two errors in parallel.  |
-| `slow-runs/`       | Test case. Apply succeeds. Later runs are slow.      |
-| `spacelift/`       | Not a test case. Creates the space and the stacks.   |
+| Path               | Purpose                                               |
+| ------------------ | ----------------------------------------------------- |
+| `simple/`          | Test case. Plan and apply both succeed.               |
+| `single-error/`    | Test case. Apply fails with one error.                |
+| `multiple-errors/` | Test case. Apply fails with two errors in parallel.   |
+| `slow-runs/`       | Test case. Apply succeeds. Later runs are slow.       |
+| `no-changes/`      | Test case. Every run after the first changes nothing. |
+| `spacelift/`       | Not a test case. Creates the space and the stacks.    |
 
 ## Rules that every test case follows
 
 Break one of these and the case stops testing what it claims to test.
 
-1. **Every case changes on every run.** Each `main.tf` has a
-   `terraform_data.trigger` with `input = timestamp()`. Other resources depend
-   on it through `keepers`. No run is ever a no-op.
+1. **Every case changes on every run, except `no-changes/`.** Each `main.tf`
+   has a `terraform_data.trigger` with `input = timestamp()`. Other resources
+   depend on it through `keepers`. `no-changes/` breaks this on purpose: it has
+   no trigger, so every run after the first plans nothing. Do not add a trigger
+   to it.
 2. **Failures happen at apply, not at plan.** A case fails through a
    `local-exec` provisioner that exits 1. `terraform validate` and
    `terraform plan` must succeed in every case.
@@ -50,7 +53,8 @@ Break one of these and the case stops testing what it claims to test.
 ## Adding a test case
 
 1. Create a directory named after the outcome it produces.
-2. Copy `simple/main.tf` as the starting point and keep the trigger.
+2. Copy `simple/main.tf` as the starting point and keep the trigger. Drop the
+   trigger only if the case is about runs that change nothing.
 3. Add one entry to `locals.stacks` in `spacelift/main.tf`. The key is the stack
    name suffix. Set `project_root` to the directory and `runs` to the number of
    runs the stack starts with. The stack joins the space on its own.
@@ -82,6 +86,8 @@ Expected output:
 - `multiple-errors` prints two, for `fail_a` and `fail_b`
 - `slow-runs` prints `sleeping 0 seconds` and `Apply complete!`. Run it twice.
   The second apply must print the sleep again, not `0 changed`.
+- `no-changes` applies two resources the first time. Run it twice. The second
+  apply must print `No changes. Your infrastructure matches the configuration.`
 
 Delete `.terraform/`, `.terraform.lock.hcl` and the state files afterwards.
 They are gitignored, but a stray state file makes the next run a no-op.

@@ -36,6 +36,12 @@ locals {
       runs         = 0
       slow_after   = null
     }
+    "no-changes" = {
+      project_root = "no-changes"
+      description  = "The first run creates the resources. Every run after it changes nothing."
+      runs         = 3
+      slow_after   = null
+    }
     "slow-runs" = {
       project_root = "slow-runs"
       description  = "The apply succeeds. The first three runs are fast. The rest are slow."
