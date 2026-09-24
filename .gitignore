@@ -3,3 +3,4 @@
 *.tfstate
 *.tfstate.*
 **/.DS_Store
+**/*_override.tf

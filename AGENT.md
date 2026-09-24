@@ -9,19 +9,23 @@ root is one test case. Point a Spacelift stack at a project root and every run
 gives the same result.
 
 The repository exists to test run reporting, not to manage real infrastructure.
-`hashicorp/random` and `terraform_data` are the only resources. Nothing here
-costs money and nothing here has a real backend.
+`hashicorp/random` and `terraform_data` are the only resources.
+`slow-provider-install/` downloads cloud providers, but uses none of them.
+Nothing here costs money and nothing here has a real backend.
 
 ## Layout
 
-| Path               | Purpose                                               |
-| ------------------ | ----------------------------------------------------- |
-| `simple/`          | Test case. Plan and apply both succeed.               |
-| `single-error/`    | Test case. Apply fails with one error.                |
-| `multiple-errors/` | Test case. Apply fails with two errors in parallel.   |
-| `slow-runs/`       | Test case. Apply succeeds. Later runs are slow.       |
-| `no-changes/`      | Test case. Every run after the first changes nothing. |
-| `spacelift/`       | Not a test case. Creates the space and the stacks.    |
+| Path                         | Purpose                                                |
+| ---------------------------- | ------------------------------------------------------ |
+| `simple/`                    | Test case. Plan and apply both succeed.                |
+| `single-error/`              | Test case. Apply fails with one error.                 |
+| `multiple-errors/`           | Test case. Apply fails with two errors in parallel.    |
+| `slow-runs/`                 | Test case. Apply succeeds. Later runs are slow.        |
+| `no-changes/`                | Test case. Every run after the first changes nothing.  |
+| `provider-version-change/`   | Test case. Each run pins a different provider version. |
+| `provider-version-conflict/` | Test case. A hook resolves a second provider version.  |
+| `slow-provider-install/`     | Test case. A hook installs providers again, no cache.  |
+| `spacelift/`                 | Not a test case. Creates the space and the stacks.     |
 
 ## Rules that every test case follows
 
@@ -49,6 +53,8 @@ Break one of these and the case stops testing what it claims to test.
    depend on the trigger and on nothing else. That is what lets Terraform run
    them at the same time.
 6. **The README table is the contract.** Change a case, change the table.
+7. **Commit no lock file.** `.terraform.lock.hcl` stays gitignored. A committed
+   lock file pins every provider, and the provider cases stop moving versions.
 
 ## Adding a test case
 
@@ -65,6 +71,12 @@ Break one of these and the case stops testing what it claims to test.
 `runs = 0` for a stack that must stay empty. Set `slow_after = N` to keep the
 first N runs fast and give the rest `TF_VAR_sleep_seconds`, which only
 `slow-runs/` reads.
+
+An entry can also set `random_versions`, one per run, which the run gets as
+`RANDOM_VERSION`. Only `provider-version-change/` reads it. `before_init`,
+`after_init` and `before_plan` set stack hooks. `private_worker = true` puts
+the stack on `var.worker_pool_id`, and leaves it out when that is null.
+`stack_defaults` holds the value of every field an entry omits.
 
 ## Verifying a change
 
@@ -88,8 +100,17 @@ Expected output:
   The second apply must print the sleep again, not `0 changed`.
 - `no-changes` applies two resources the first time. Run it twice. The second
   apply must print `No changes. Your infrastructure matches the configuration.`
+- `provider-version-change`: run `RANDOM_VERSION=3.6.0 sh pin-random.sh`, then
+  init. Init must print `Installed hashicorp/random v3.6.0`.
+- `provider-version-conflict`: init, then `tofu -chdir=pinned init`. The two
+  inits must install different versions of `hashicorp/random`.
+- `slow-provider-install`: init, then
+  `REINSTALL_PASSES=2 sh reinstall-providers.sh`. Every pass must print
+  `Installed hashicorp/aws`. Apply must print `Apply complete!` without cloud
+  credentials.
 
-Delete `.terraform/`, `.terraform.lock.hcl` and the state files afterwards.
+Delete `.terraform/`, `.terraform.lock.hcl`, `random_override.tf` and the state
+files afterwards. Also delete them in `provider-version-conflict/pinned/`.
 They are gitignored, but a stray state file makes the next run a no-op.
 
 ## The `spacelift/` directory

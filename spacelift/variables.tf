@@ -57,3 +57,9 @@ variable "name_prefix" {
   description = "Prefix for the stack names. A second copy of the set in the same account also needs a different parent_space_id, because the space name is fixed."
   default     = "run-obs"
 }
+
+variable "worker_pool_id" {
+  type        = string
+  description = "Private worker pool for slow-provider-install-private. null leaves that stack out."
+  default     = null
+}
