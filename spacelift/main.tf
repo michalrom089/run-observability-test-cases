@@ -10,7 +10,9 @@
 # random_versions gives each run its own RANDOM_VERSION. Set one per run.
 # before_init,
 # after_init,
-# before_plan     are hooks the stack runs in that phase.
+# before_plan,
+# after_plan,
+# after_apply     are hooks the stack runs in that phase.
 # private_worker  puts the stack on var.worker_pool_id. The stack exists only
 #                 when that variable is set.
 locals {
@@ -89,6 +91,30 @@ locals {
       after_init     = ["sh reinstall-providers.sh"]
       private_worker = true
     }
+    "long-names" = {
+      project_root = "long-names"
+      description  = "Resource addresses and hook commands long enough to overflow any column."
+      runs         = 1
+      before_init  = ["sh hooks/a-hook-script-whose-file-name-reads-like-a-whole-sentence-about-what-it-does.sh"]
+      # One line of 855 characters. The metric cuts a command at 500.
+      before_plan = [
+        "sleep 3 && echo ${join(" ", formatlist("--option-%02d=a-value-long-enough-to-matter", range(20)))}",
+      ]
+      # A short hook, to compare against.
+      after_plan = ["sleep 1"]
+      # A command that spans several lines. trimspace drops the last newline,
+      # so the worker can chain the hook with other commands.
+      after_apply = [
+        trimspace(<<-EOT
+          echo "a hook whose command spans several lines"
+          for step in one two three; do
+            echo "step $step"
+            sleep 1
+          done
+        EOT
+        ),
+      ]
+    }
   }
 
   stack_defaults = {
@@ -97,6 +123,8 @@ locals {
     before_init     = null
     after_init      = null
     before_plan     = null
+    after_plan      = null
+    after_apply     = null
     private_worker  = false
   }
 
@@ -159,6 +187,8 @@ resource "spacelift_stack" "test_case" {
   before_init = each.value.before_init
   after_init  = each.value.after_init
   before_plan = each.value.before_plan
+  after_plan  = each.value.after_plan
+  after_apply = each.value.after_apply
 
   space_id       = spacelift_space.test_cases.id
   worker_pool_id = each.value.private_worker ? var.worker_pool_id : null

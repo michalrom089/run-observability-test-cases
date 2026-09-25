@@ -25,6 +25,7 @@ Nothing here costs money and nothing here has a real backend.
 | `provider-version-change/`   | Test case. Each run pins a different provider version. |
 | `provider-version-conflict/` | Test case. A hook resolves a second provider version.  |
 | `slow-provider-install/`     | Test case. A hook installs providers again, no cache.  |
+| `long-names/`                | Test case. Long resource addresses and hook commands.  |
 | `spacelift/`                 | Not a test case. Creates the space and the stacks.     |
 
 ## Rules that every test case follows
@@ -74,9 +75,10 @@ first N runs fast and give the rest `TF_VAR_sleep_seconds`, which only
 
 An entry can also set `random_versions`, one per run, which the run gets as
 `RANDOM_VERSION`. Only `provider-version-change/` reads it. `before_init`,
-`after_init` and `before_plan` set stack hooks. `private_worker = true` puts
-the stack on `var.worker_pool_id`, and leaves it out when that is null.
-`stack_defaults` holds the value of every field an entry omits.
+`after_init`, `before_plan`, `after_plan` and `after_apply` set stack hooks.
+`private_worker = true` puts the stack on `var.worker_pool_id`, and leaves it
+out when that is null. `stack_defaults` holds the value of every field an entry
+omits.
 
 ## Verifying a change
 
@@ -108,6 +110,8 @@ Expected output:
   `REINSTALL_PASSES=2 sh reinstall-providers.sh`. Every pass must print
   `Installed hashicorp/aws`. Apply must print `Apply complete!` without cloud
   credentials.
+- `long-names` creates 8 resources. `terraform_data.short` finishes last, after
+  5 seconds.
 
 Delete `.terraform/`, `.terraform.lock.hcl`, `random_override.tf` and the state
 files afterwards. Also delete them in `provider-version-conflict/pinned/`.

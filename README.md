@@ -17,11 +17,12 @@ is a no-op.
 | `provider-version-change/`   | succeeds | succeeds, provider version moves per run   |
 | `provider-version-conflict/` | succeeds | succeeds, a hook resolves a second version |
 | `slow-provider-install/`     | succeeds | succeeds, after a slow init                |
+| `long-names/`                | succeeds | succeeds, with long addresses and hooks    |
 
-`spacelift/` is not a test case. It creates up to twelve stacks from those
-eight project roots. Two hold no runs at all, one changes pace part way through
-and one goes quiet after its first run. The last five each produce one finding
-type. Each is its own thing to report on.
+`spacelift/` is not a test case. It creates up to thirteen stacks from those
+nine project roots. Two hold no runs at all, one changes pace part way through
+and one goes quiet after its first run. Five each produce one finding type, and
+one stretches the names in the metrics. Each is its own thing to report on.
 
 | Stack                                          | Project root                 | Runs           |
 | ---------------------------------------------- | ---------------------------- | -------------- |
@@ -37,8 +38,9 @@ type. Each is its own thing to report on.
 | `run-obs-provider-version-conflict-two-states` | `provider-version-conflict/` | 1              |
 | `run-obs-slow-provider-install`                | `slow-provider-install/`     | 1              |
 | `run-obs-slow-provider-install-private`        | `slow-provider-install/`     | 1              |
+| `run-obs-long-names`                           | `long-names/`                | 1              |
 
-The last five stacks cover the findings that the backend reports for a run.
+Five stacks cover the findings that the backend reports for a run.
 
 | Stack                                          | Finding                            | Severity |
 | ---------------------------------------------- | ---------------------------------- | -------- |
@@ -178,7 +180,8 @@ it, so it reports `ProviderVersionChange`.
 
 ### `provider-version-conflict/`
 
-The root module requires `hashicorp/random ~> 3.7`. `pinned/` requires `= 3.5.1`.
+The root module requires `hashicorp/random ~> 3.7`. `pinned/` requires
+`= 3.5.1`.
 Nothing plans or applies `pinned/`. A hook runs `tofu -chdir=pinned init`, so
 the run resolves the provider at two versions and reports
 `ProviderVersionConflict`.
@@ -206,6 +209,40 @@ ten installs on it. The case needs no slow network.
 The public stack gets the custom runner image recommendation. The private stack
 gets the `TF_PLUGIN_CACHE_DIR` recommendation.
 
+### `long-names/`
+
+Stretches the two labels that hold names in the run metrics: the resource
+address of the slowest resources, and the command of the slowest hooks. Every
+resource sleeps in a `local-exec` provisioner, so each has a clear duration.
+
+The resources:
+
+- `terraform_data.short` sleeps 5 seconds. The slowest resource has the
+  shortest address.
+- Two module calls with long names nest the rest. The longest address is about
+  270 characters.
+- A `for_each` resource in the inner module has three keys: a long kebab-case
+  key, a key with spaces, a slash and double quotes, and a key with Cyrillic,
+  umlauts and an emoji. They sleep 4, 3 and 2 seconds.
+- A `count` resource with a long name has two instances. Each sleeps 1 second.
+
+The metric keeps the 5 slowest resources per state. The apply creates 8, so the
+cut drops some.
+
+The hooks, set on `run-obs-long-names` in `spacelift/main.tf`:
+
+| Phase         | Command                                       | Sleeps |
+| ------------- | --------------------------------------------- | ------ |
+| `before_init` | a script in `hooks/` with a 79-character name | 2 s    |
+| `before_plan` | one line of 855 characters                    | 3 s    |
+| `after_plan`  | `sleep 1`, to compare against                 | 1 s    |
+| `after_apply` | a script of five lines                        | 3 s    |
+
+The metric cuts a command at 500 characters, so the `before_plan` hook shows
+the cut. The worker measures a hook on its own only when the
+`FlagEnableWorkerCommandExecutionSplit` feature flag is on. Without it, the
+hooks run in one shell with the tofu command and the run has no hook metrics.
+
 ### `slow-runs/`
 
 The apply always succeeds. `var.sleep_seconds` decides how long it takes, and
@@ -220,7 +257,8 @@ the rest sleep.
 ## Requirements
 
 Terraform 1.4 or later, for the `terraform_data` resource. OpenTofu works too.
-Most cases use only `hashicorp/random`. `slow-provider-install/` also downloads `hashicorp/aws`.
+Most cases use only `hashicorp/random`. `slow-provider-install/` also downloads
+`hashicorp/aws`.
 
 [Getting started](#getting-started) needs spacectl v1.20.0 or later. It calls
 the `api` command, which arrived in that release. `spacectl version` prints what
