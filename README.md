@@ -254,6 +254,24 @@ they sleep and a duration alert has something to catch.
 on the stack says how many runs stay fast, and `var.slow_seconds` says how long
 the rest sleep.
 
+The apply runs seven resources that each sleep. Five steps under
+`terraform_data.step` take 1 to 3 seconds in every run. `terraform_data.migrate`
+and `terraform_data.deploy` take 1 and 2 seconds in a fast run. In a slow run
+they also take 20% and 60% of `var.sleep_seconds`.
+
+The stack runs four hooks through `hooks/step.sh`, one each in `before_init`,
+`after_init`, `after_plan` and `after_apply`. The script reads
+`TF_VAR_sleep_seconds` itself. `warm-cache` and `lint` stay steady. `scan-plan`
+and `smoke-test` each take 10% of the slow sleep. So a slow run puts its time in
+two resources and two hooks, and the metrics show which ones.
+
+| Step                     | Fast run | Slow run, 300 seconds |
+| ------------------------ | -------- | --------------------- |
+| `terraform_data.migrate` | 1 s      | 61 s                  |
+| `terraform_data.deploy`  | 2 s      | 182 s                 |
+| hook `scan-plan`         | 1 s      | 31 s                  |
+| hook `smoke-test`        | 2 s      | 32 s                  |
+
 ## Requirements
 
 Terraform 1.4 or later, for the `terraform_data` resource. OpenTofu works too.

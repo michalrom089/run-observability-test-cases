@@ -58,6 +58,12 @@ locals {
       description  = "The apply succeeds. The first three runs are fast. The rest are slow."
       runs         = 6
       slow_after   = 3
+      # sh hooks/step.sh <name> <base seconds> <percent of TF_VAR_sleep_seconds>.
+      # Two hooks stay steady. Two take 10% each of a slow run sleep.
+      before_init = ["sh hooks/step.sh warm-cache 2 0"]
+      after_init  = ["sh hooks/step.sh lint 1 0"]
+      after_plan  = ["sh hooks/step.sh scan-plan 1 10"]
+      after_apply = ["sh hooks/step.sh smoke-test 2 10"]
     }
     "provider-version-change" = {
       project_root    = "provider-version-change"

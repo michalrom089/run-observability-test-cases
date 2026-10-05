@@ -71,7 +71,7 @@ Break one of these and the case stops testing what it claims to test.
 `spacelift_run` starts the runs on the new stack. You do not trigger them. Set
 `runs = 0` for a stack that must stay empty. Set `slow_after = N` to keep the
 first N runs fast and give the rest `TF_VAR_sleep_seconds`, which only
-`slow-runs/` reads.
+`slow-runs/` and its hooks read.
 
 An entry can also set `random_versions`, one per run, which the run gets as
 `RANDOM_VERSION`. Only `provider-version-change/` reads it. `before_init`,
@@ -98,8 +98,11 @@ Expected output:
 - `simple` prints `Apply complete!`
 - `single-error` prints one `Error: local-exec provisioner error`
 - `multiple-errors` prints two, for `fail_a` and `fail_b`
-- `slow-runs` prints `sleeping 0 seconds` and `Apply complete!`. Run it twice.
-  The second apply must print the sleep again, not `0 changed`.
+- `slow-runs` creates 9 resources. `migrate: sleeping 1 seconds` and
+  `deploy: sleeping 2 seconds` show a fast run. Run it again with
+  `TF_VAR_sleep_seconds=10`. It must print the sleeps again, not `0 changed`,
+  and `deploy` must sleep 8 seconds. `sh hooks/step.sh scan-plan 1 10` must
+  print `sleeping 1 seconds`.
 - `no-changes` applies two resources the first time. Run it twice. The second
   apply must print `No changes. Your infrastructure matches the configuration.`
 - `provider-version-change`: run `RANDOM_VERSION=3.6.0 sh pin-random.sh`, then
