@@ -81,7 +81,7 @@ spacectl api --variables '{
     "administrative": false,
     "labels": ["run-observability", "bootstrap"],
     "vendorConfig": {
-      "opentofu": { "version": "1.10.6", "workflowTool": "OPENTOFU" }
+      "opentofu": { "version": "1.13.1", "workflowTool": "OPENTOFU" }
     }
   },
   "manageState": true
@@ -330,7 +330,7 @@ directory and `runs` says how many runs the stack starts with.
 | `git_namespace`   | `michalrom089`                 | Namespace shown next to the repo      |
 | `branch`          | `main`                         | Branch the stacks track               |
 | `parent_space_id` | `root`                         | Space that holds the test case space  |
-| `tofu_version`    | `1.10.6`                       | OpenTofu version the stacks run       |
+| `tofu_version`    | `1.13.1`                       | OpenTofu version the stacks run       |
 | `autodeploy`      | `true`                         | Apply tracked runs without confirming |
 | `slow_seconds`    | `300`                          | Seconds a slow run sleeps             |
 | `trigger_runs`    | `true`                         | Start one run per case at create      |
