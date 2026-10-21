@@ -140,6 +140,10 @@ The stacks read the repository through the raw Git vendor. `raw_git` takes the
 public HTTPS URL from `var.git_url`. The account needs no VCS integration, so
 the config works in any account. Keep the block.
 
+`var.local_dev = true` drops the `raw_git` block. The stacks then use the
+managed GitHub integration. Only the local bootstrap stack sets
+`TF_VAR_local_dev=true`. The default stays `false`.
+
 A bootstrap stack applies this directory. `README.md` holds the `spacectl api`
 commands that create it. The bootstrap stack needs the `space-admin` role
 attached in `root`. `administrative = true` is deprecated. Use

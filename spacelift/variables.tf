@@ -58,6 +58,12 @@ variable "name_prefix" {
   default     = "run-obs"
 }
 
+variable "local_dev" {
+  type        = bool
+  description = "Drop the raw Git vendor, so the stacks use the managed GitHub integration. Only the local bootstrap stack sets it."
+  default     = false
+}
+
 variable "worker_pool_id" {
   type        = string
   description = "Private worker pool for slow-provider-install-private. null leaves that stack out."

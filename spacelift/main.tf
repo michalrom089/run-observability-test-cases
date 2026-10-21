@@ -180,9 +180,15 @@ resource "spacelift_stack" "test_case" {
   project_root = each.value.project_root
 
   # The raw Git vendor reads a public repository over HTTPS. No VCS integration.
-  raw_git {
-    namespace = var.git_namespace
-    url       = var.git_url
+  # Local dev drops the block, so the stack uses the managed GitHub integration,
+  # and the backend takes the namespace from the GitHub app installation.
+  dynamic "raw_git" {
+    for_each = var.local_dev ? [] : [var.git_url]
+
+    content {
+      namespace = var.git_namespace
+      url       = raw_git.value
+    }
   }
 
   # A native OpenTofu stack. The block replaces terraform_workflow_tool = "OPEN_TOFU".
