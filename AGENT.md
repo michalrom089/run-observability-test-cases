@@ -26,6 +26,7 @@ Nothing here costs money and nothing here has a real backend.
 | `provider-version-conflict/` | Test case. A hook resolves a second provider version.  |
 | `slow-provider-install/`     | Test case. A hook installs providers again, no cache.  |
 | `long-names/`                | Test case. Long resource addresses and hook commands.  |
+| `slowest-hidden/`            | Test case. A long apply of many short resources.       |
 | `spacelift/`                 | Not a test case. Creates the space and the stacks.     |
 
 ## Rules that every test case follows
@@ -77,7 +78,8 @@ An entry can also set `random_versions`, one per run, which the run gets as
 `RANDOM_VERSION`. Only `provider-version-change/` reads it. `before_init`,
 `after_init`, `before_plan`, `after_plan` and `after_apply` set stack hooks.
 `private_worker = true` puts the stack on `var.worker_pool_id`, and leaves it
-out when that is null. `stack_defaults` holds the value of every field an entry
+out when that is null. `environment` sets environment variables on the stack.
+`stack_defaults` holds the value of every field an entry
 omits.
 
 ## Verifying a change
@@ -115,6 +117,9 @@ Expected output:
   credentials.
 - `long-names` creates 8 resources. `terraform_data.short` finishes last, after
   5 seconds.
+- `slowest-hidden`: apply with `TF_CLI_ARGS_apply=-parallelism=1`. It creates
+  47 resources one after another and takes about 150 seconds.
+  `slowest: sleeping 8 seconds` is the longest sleep.
 
 Delete `.terraform/`, `.terraform.lock.hcl`, `random_override.tf` and the state
 files afterwards. Also delete them in `provider-version-conflict/pinned/`.

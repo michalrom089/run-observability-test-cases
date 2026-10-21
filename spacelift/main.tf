@@ -13,6 +13,8 @@
 # before_plan,
 # after_plan,
 # after_apply     are hooks the stack runs in that phase.
+# environment     maps the names of environment variables the stack sets to
+#                 their values.
 # private_worker  puts the stack on var.worker_pool_id. The stack exists only
 #                 when that variable is set.
 locals {
@@ -121,6 +123,18 @@ locals {
         ),
       ]
     }
+    "slowest-hidden" = {
+      project_root = "slowest-hidden"
+      description  = "A long apply made of many short resources. The slowest resource takes 5% of the phase."
+      runs         = 1
+      # Short hooks, next to a phase and a run of about 150 seconds.
+      before_init = ["sleep 2"]
+      after_apply = ["sleep 2"]
+      # One resource at a time, so many short resources make a long phase.
+      environment = {
+        TF_CLI_ARGS_apply = "-parallelism=1"
+      }
+    }
   }
 
   stack_defaults = {
@@ -132,6 +146,7 @@ locals {
     after_plan      = null
     after_apply     = null
     private_worker  = false
+    environment     = null
   }
 
   stacks = {
@@ -207,6 +222,24 @@ resource "spacelift_stack" "test_case" {
   autodeploy     = var.autodeploy
 
   labels = ["run-observability", "test-case", each.value.project_root]
+}
+
+# One entry per environment variable that a stack sets.
+resource "spacelift_environment_variable" "test_case" {
+  for_each = merge([
+    for key, stack in local.stacks : {
+      for name, value in coalesce(stack.environment, {}) : "${key}-${name}" => {
+        stack = key
+        name  = name
+        value = value
+      }
+    }
+  ]...)
+
+  stack_id   = spacelift_stack.test_case[each.value.stack].id
+  name       = each.value.name
+  value      = each.value.value
+  write_only = false
 }
 
 # The fast runs. A stack with runs = 0 gets none, which is what the `-no-runs`

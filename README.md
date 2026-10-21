@@ -18,11 +18,13 @@ is a no-op.
 | `provider-version-conflict/` | succeeds | succeeds, a hook resolves a second version |
 | `slow-provider-install/`     | succeeds | succeeds, after a slow init                |
 | `long-names/`                | succeeds | succeeds, with long addresses and hooks    |
+| `slowest-hidden/`            | succeeds | succeeds, after many short resources       |
 
-`spacelift/` is not a test case. It creates up to thirteen stacks from those
-nine project roots. Two hold no runs at all, one changes pace part way through
-and one goes quiet after its first run. Five each produce one finding type, and
-one stretches the names in the metrics. Each is its own thing to report on.
+`spacelift/` is not a test case. It creates up to fourteen stacks from those
+ten project roots. Two hold no runs at all, one changes pace part way through
+and one goes quiet after its first run. Five each produce one finding type, one
+stretches the names in the metrics, and one hides its slowest resource in a long
+phase. Each is its own thing to report on.
 
 | Stack                                          | Project root                 | Runs           |
 | ---------------------------------------------- | ---------------------------- | -------------- |
@@ -39,6 +41,7 @@ one stretches the names in the metrics. Each is its own thing to report on.
 | `run-obs-slow-provider-install`                | `slow-provider-install/`     | 1              |
 | `run-obs-slow-provider-install-private`        | `slow-provider-install/`     | 1              |
 | `run-obs-long-names`                           | `long-names/`                | 1              |
+| `run-obs-slowest-hidden`                       | `slowest-hidden/`            | 1              |
 
 Five stacks cover the findings that the backend reports for a run.
 
@@ -242,6 +245,31 @@ The metric cuts a command at 500 characters, so the `before_plan` hook shows
 the cut. The worker measures a hook on its own only when the
 `FlagEnableWorkerCommandExecutionSplit` feature flag is on. Without it, the
 hooks run in one shell with the tofu command and the run has no hook metrics.
+
+### `slowest-hidden/`
+
+Reproduces a run whose slowest items all show the same bar. The run
+observability tab scales each bar to its phase, or to the run for providers. A
+bar has a minimum width of 10 pixels. When every item takes a few percent of its
+phase, every bar falls under that minimum, and the slowest item looks like the
+rest.
+
+`run-obs-slowest-hidden` sets `TF_CLI_ARGS_apply=-parallelism=1`, so the apply
+runs one resource at a time. The resources:
+
+| Resource                   | Instances | Sleeps | Share of the apply |
+| -------------------------- | --------- | ------ | ------------------ |
+| `terraform_data.slowest`   | 1         | 8 s    | about 5%           |
+| `terraform_data.near`      | 4         | 5 s    | about 3% each      |
+| `terraform_data.filler`    | 40        | 3 s    | about 2% each      |
+
+The apply takes about 150 seconds. No resource takes more than 8 of them.
+
+Two hooks sleep 2 seconds each, in `before_init` and `after_apply`. The
+`hashicorp/random` install takes about a second of a run that lasts over 150
+seconds. So the hooks and the providers show the same problem as the resources.
+The hooks show only when the `FlagEnableWorkerCommandExecutionSplit` feature
+flag is on. See `long-names/`.
 
 ### `slow-runs/`
 
